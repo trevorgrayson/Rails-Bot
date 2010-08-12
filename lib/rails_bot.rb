@@ -59,6 +59,8 @@ class RailsBot
 					muc.say 'Hello.'
 				else
 					@cmds.each{|regex,func|
+						puts "text = '#{text}'"
+						puts "regex = '#{regex}'"
 						if text.match Regexp.new regex
 							begin
 								response = send(func, text)

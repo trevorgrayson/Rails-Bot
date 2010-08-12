@@ -11,3 +11,7 @@ def find_active_record_object body
 
 	object.constantize.find(oid).inspect
 end
+
+def run_rake_task body #please don't run arbitrary system commands here
+	`#{body}`
+end
