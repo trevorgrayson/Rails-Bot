@@ -15,3 +15,10 @@ end
 def run_rake_task body #please don't run arbitrary system commands here
 	`#{body}`
 end
+
+def get_some_rest body 
+	num = body.split(' ')[1]
+	sleep num.to_i
+
+	"That was a nice nap"
+end

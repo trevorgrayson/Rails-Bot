@@ -14,6 +14,7 @@ class RailsBot
 	def initialize(bind)
 		@cmds = YAML.load_file("config/bot_commands.yml")
 		@sbinding = bind
+		@jobs = {}
 	end
 
 	def login
@@ -57,13 +58,49 @@ class RailsBot
 					$stdout = old_stdout
 				elsif text.match '^(hello|hey|hi|sup|salutations|greetings)$'
 					muc.say 'Hello.'
+				elsif text.match 'what is happening'
+					if @jobs.size > 0
+						response = "\n"
+						@jobs.each {|job,attrs|
+							response += "#{attrs[:nick]} told me to `#{attrs[:text]}`.#{" Which I just finished." if !job.status}\n"
+						}
+						
+						muc.say response + "Now let me get back to work!"
+					else 
+						muc.say "Just hanging out."
+					end
 				else
 					@cmds.each{|regex,func|
-						puts "text = '#{text}'"
-						puts "regex = '#{regex}'"
 						if text.match Regexp.new regex
 							begin
-								response = send(func, text)
+								job = Thread.new {
+
+									Thread.stop
+									muc.say	send(func, text)
+									@jobs.delete job
+								}
+
+								#Keep track of what's going on
+								@jobs.merge!({ job => {
+										:nick => nick,
+										:text => text
+									}
+								})
+
+								puts @jobs.inspect
+								job.join(5)
+
+								case job.status
+									when 'run' then 
+										"Trevor Grayson did not expect this case."
+									when 'sleep' then 
+										muc.say "#{nick}: I'm working on it. Give me a couple of minutes on this one."
+										job.run
+									when 'aborting' then "I'm aborting this job."
+									#when false then ""
+									#else
+								end
+
 							rescue StandardError => e
 								puts e.to_s
 								response = e.to_s
