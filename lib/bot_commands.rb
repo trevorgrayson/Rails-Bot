@@ -1,7 +1,5 @@
-require 'net/ftp'
-
 def find_active_record_object_by_id body
-	DynamicDocument::Base.factory(body).inspect 
+	find_active_record_object body
 end
 
 def find_active_record_object body
@@ -56,6 +54,8 @@ def push_sql_staging body
 	puts "/Users/tgrayson/bin/deploy_stage /tmp/#{filename}"
 	`/Users/tgrayson/bin/deploy_stage /tmp/#{filename}`
 	`curl --basic --user "sonyd2c:tugboat" --data-ascii "status=#sonydev%20#m2%20#{store.name}%20has%20been%20pushed%20to%20stage." http://twitter.com/statuses/update.json`
+
+	#require 'net/ftp'
 
 	#begin
 	#	ftp = Net::FTP.new('ftp.sonymusicmobile.com')

@@ -5,14 +5,15 @@ require 'stringio'
 require 'xmpp4r'
 require 'xmpp4r/muc/helper/mucclient'
 require 'xmpp4r/muc/helper/simplemucclient'
-require 'lib/bot_commands'
+require 'vendor/plugins/rails_bot/lib/bot_commands'
 
 class RailsBot
 	include Jabber
 	RAILSBOT = YAML.load_file( "#{RAILS_ROOT}/config/rails_bot.yml" )
 
-	def initialize
+	def initialize(bind)
 		@cmds = YAML.load_file("config/bot_commands.yml")
+		@sbinding = bind
 	end
 
 	def login
@@ -38,13 +39,13 @@ class RailsBot
 			if ( nick != RAILSBOT['name'] )
 				puts( (time || Time.new).strftime('%I:%M') + " <#{nick}> #{text}" )
 
-				if false && text[0] == 92 # / = 47, \ = 92
+				if text[0] == 92 # / = 47, \ = 92
 					strio = StringIO.new
 					old_stdout = $stdout
 					$stdout = strio
 
 					begin
-						result = eval(text[1..-1], sbinding)
+						result = eval(text[1..-1], @sbinding)
 					rescue Exception => e
 						muc.say "Well done sir.\n" + e
 					end
