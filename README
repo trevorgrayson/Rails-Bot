@@ -1,7 +1,7 @@
 RailsBot
 ========
 
-Introduction goes here.
+rake rails_bot
 
 
 Example
@@ -10,4 +10,4 @@ Example
 Example goes here.
 
 
-Copyright (c) 2010 [name of plugin creator], released under the MIT license
+Copyright (c) 2010 Trevor Grayson, released under the MIT license
