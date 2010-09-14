@@ -36,6 +36,12 @@ class RailsBot
 		muc_jid = JID::new("#{RAILSBOT['name']}@conference.#{RAILSBOT['server']}/#{RAILSBOT['name']}")
 		muc = Jabber::MUC::SimpleMUCClient.new(@client)
 
+		self.register_behaviors
+		muc.join(muc_jid,'tugboat')
+
+	end
+
+	def register_behaviors
 		muc.on_message {| time,nick,text |
 			if ( nick != RAILSBOT['name'] )
 				puts( (time || Time.new).strftime('%I:%M') + " <#{nick}> #{text}" )
@@ -111,8 +117,6 @@ class RailsBot
 				end
 			end
 		}
-
-		muc.join(muc_jid,'tugboat')
 
 	end
 
