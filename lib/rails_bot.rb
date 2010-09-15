@@ -5,11 +5,11 @@ require 'stringio'
 require 'xmpp4r'
 require 'xmpp4r/muc/helper/mucclient'
 require 'xmpp4r/muc/helper/simplemucclient'
-require 'vendor/plugins/rails_bot/lib/bot_commands'
+require File.dirname(__FILE__) + '/bot_commands.rb'
 
 class RailsBot
 	include Jabber
-	RAILSBOT = YAML.load_file( "#{RAILS_ROOT}/config/rails_bot.yml" )
+	RAILSBOT = YAML.load_file( "#{File.dirname(__FILE__)}/../config/rails_bot.yml" )
 	WAIT_TIME = 10
 
 

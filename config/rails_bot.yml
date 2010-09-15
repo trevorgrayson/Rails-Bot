@@ -1,0 +1,5 @@
+name: railsbot
+server: trevorgrayson.com
+password: password
+chatroom:
+  password: railsbot
