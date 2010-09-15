@@ -7,7 +7,6 @@ def find_active_record_object body
 	object.strip!
 	object.capitalize!
 	oid.strip!
-	puts oid
 
 	object.constantize.find(oid).inspect
 end

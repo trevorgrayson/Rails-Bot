@@ -10,6 +10,8 @@ require 'vendor/plugins/rails_bot/lib/bot_commands'
 class RailsBot
 	include Jabber
 	RAILSBOT = YAML.load_file( "#{RAILS_ROOT}/config/rails_bot.yml" )
+	WAIT_TIME = 10
+
 
 	def initialize(bind)
 		@cmds = YAML.load_file("config/bot_commands.yml")
@@ -34,15 +36,15 @@ class RailsBot
 
 	def register_with_chatroom
 		muc_jid = JID::new("#{RAILSBOT['name']}@conference.#{RAILSBOT['server']}/#{RAILSBOT['name']}")
-		muc = Jabber::MUC::SimpleMUCClient.new(@client)
+		@muc = Jabber::MUC::SimpleMUCClient.new(@client)
 
-		self.register_behaviors
-		muc.join(muc_jid,'tugboat')
+		register_behaviors
+		@muc.join(muc_jid,'tugboat')
 
 	end
 
 	def register_behaviors
-		muc.on_message {| time,nick,text |
+		@muc.on_message {| time,nick,text |
 			if ( nick != RAILSBOT['name'] )
 				puts( (time || Time.new).strftime('%I:%M') + " <#{nick}> #{text}" )
 
@@ -54,16 +56,16 @@ class RailsBot
 					begin
 						result = eval(text[1..-1], @sbinding)
 					rescue Exception => e
-						muc.say "Well done sir.\n" + e
+						@muc.say "Well done sir.\n" + e
 					end
 
 					strio.rewind
-					muc.say strio.read
-					muc.say result.inspect
+					@muc.say strio.read
+					@muc.say result.inspect
 
 					$stdout = old_stdout
 				elsif text.match '^(hello|hey|hi|sup|salutations|greetings)$'
-					muc.say 'Hello.'
+					@muc.say 'Hello.'
 				elsif text.match 'what is happening'
 					if @jobs.size > 0
 						response = "\n"
@@ -71,9 +73,9 @@ class RailsBot
 							response += "#{attrs[:nick]} told me to `#{attrs[:text]}`.#{" Which I just finished." if !job.status}\n"
 						}
 						
-						muc.say response + "Now let me get back to work!"
+						@muc.say response + "Now let me get back to work!"
 					else 
-						muc.say "Just hanging out."
+						@muc.say "Just hanging out."
 					end
 				else
 					@cmds.each{|regex,func|
@@ -82,7 +84,7 @@ class RailsBot
 								job = Thread.new {
 
 									Thread.stop
-									muc.say	send(func, text)
+									@muc.say	send(func, text)
 									@jobs.delete job
 								}
 
@@ -94,14 +96,16 @@ class RailsBot
 								})
 
 								puts @jobs.inspect
-								job.join(5)
+								job.run
+								job.join(WAIT_TIME)
 
 								case job.status
 									when 'run' then 
 										"Trevor Grayson did not expect this case."
 									when 'sleep' then 
-										muc.say "#{nick}: I'm working on it. Give me a couple of minutes on this one."
+										@muc.say "#{nick}: I'm working on it. Give me a couple of minutes on this one."
 										job.run
+										job.join
 									when 'aborting' then "I'm aborting this job."
 									#when false then ""
 									#else
@@ -111,7 +115,7 @@ class RailsBot
 								puts e.to_s
 								response = e.to_s
 							end
-							muc.say response
+							@muc.say response
 						end
 					}
 				end
