@@ -1,6 +1,3 @@
-# RailsBot
-#class << ActiveRecord::Base
-#end
 require 'stringio'
 require 'xmpp4r'
 require 'xmpp4r/muc/helper/mucclient'
@@ -9,7 +6,14 @@ require File.dirname(__FILE__) + '/bot_commands.rb'
 
 class RailsBot
 	include Jabber
-	RAILSBOT = YAML.load_file( "#{File.dirname(__FILE__)}/../config/rails_bot.yml" )
+
+	bot_config_path = "#{RAILS_ROOT}/config/rails_bot.yml"	
+
+	if !FileTest.exists? bot_config_path
+		bot_config_path = "#{File.dirname(__FILE__)}/../config/rails_bot.yml" 
+	end
+
+	RAILSBOT = YAML.load_file(bot_config_path)
 	WAIT_TIME = 10
 
 
@@ -49,24 +53,30 @@ class RailsBot
 				puts( (time || Time.new).strftime('%I:%M') + " <#{nick}> #{text}" )
 
 				if text[0] == 92 # / = 47, \ = 92
-					strio = StringIO.new
-					old_stdout = $stdout
-					$stdout = strio
+					#User started with the magic character, this will be run as ruby code
+					self.schedule(nick, text) {
+						strio = StringIO.new
+						old_stdout = $stdout
+						$stdout = strio
 
-					begin
-						result = eval(text[1..-1], @sbinding)
-					rescue Exception => e
-						@muc.say "Well done sir.\n" + e
-					end
+						begin
+							result = eval(text[1..-1], @sbinding)
+						rescue Exception => e
+							@muc.say "Well done sir.\n" + e
+						end
 
-					strio.rewind
-					@muc.say strio.read
-					@muc.say result.inspect
+						strio.rewind
+						@muc.say strio.read      #echo stdout to chatroom
 
-					$stdout = old_stdout
+						$stdout = old_stdout
+
+						result.inspect           #Implicitly Show results IRB style
+					}
 				elsif text.match '^(hello|hey|hi|sup|salutations|greetings)$'
+					#Be polite and respond to greetings. (Also good to check bot's heartbeat)
 					@muc.say 'Hello.'
 				elsif text.match 'what is happening'
+					#Describe what's going on with background tasks
 					if @jobs.size > 0
 						response = "\n"
 						@jobs.each {|job,attrs|
@@ -78,42 +88,11 @@ class RailsBot
 						@muc.say "Just hanging out."
 					end
 				else
+					#Check regex list of commands. This is the customizable part.
 					@cmds.each{|regex,func|
 						if text.match Regexp.new regex
-							begin
-								job = Thread.new {
-
-									Thread.stop
-									@muc.say	send(func, text)
-									@jobs.delete job
-								}
-
-								#Keep track of what's going on
-								@jobs.merge!({ job => {
-										:nick => nick,
-										:text => text
-									}
-								})
-
-								puts @jobs.inspect
-								job.run
-								job.join(WAIT_TIME)
-
-								case job.status
-									when 'run' then 
-										"Trevor Grayson did not expect this case."
-									when 'sleep' then 
-										@muc.say "#{nick}: I'm working on it. Give me a couple of minutes on this one."
-										job.run
-										job.join
-									when 'aborting' then "I'm aborting this job."
-									#when false then ""
-									#else
-								end
-
-							rescue StandardError => e
-								puts e.to_s
-								response = e.to_s
+							self.schedule(nick, text) do
+								send(func, text)  
 							end
 							@muc.say response
 						end
@@ -122,6 +101,44 @@ class RailsBot
 			end
 		}
 
+	end
+
+	def schedule(requestor, request)
+		begin
+			job = Thread.new {
+
+				Thread.stop                #Let's pause the process, so we can schedule it.
+				@muc.say yield             #Process has been resumed.. have at it!
+				@jobs.delete job           #Clean up the job.
+			}
+
+			#Keep track of what's going on
+			@jobs.merge!({ job => {
+					:nick => requestor,
+					:text => request
+				}
+			})
+
+			puts @jobs.inspect
+			job.run
+			job.join(WAIT_TIME)
+
+			case job.status
+				when 'run' then 
+					"Trevor Grayson did not expect this case."
+				when 'sleep' then 
+					@muc.say "#{requestor}: I'm working on it. Give me a couple of minutes on this one."
+					job.run
+					job.join
+				when 'aborting' then "I'm aborting this job."
+				#when false then ""
+				#else
+			end
+
+		rescue StandardError => e
+			puts e.to_s
+			response = e.to_s
+		end
 	end
 
 end
