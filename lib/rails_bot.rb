@@ -14,7 +14,7 @@ class RailsBot
 	end
 
 	RAILSBOT = YAML.load_file(bot_config_path)
-	WAIT_TIME = 10
+	WAIT_TIME = 2
 
 
 	def initialize(bind)
@@ -72,9 +72,11 @@ class RailsBot
 
 						result.inspect           #Implicitly Show results IRB style
 					}
+
 				elsif text.match '^(hello|hey|hi|sup|salutations|greetings)$'
 					#Be polite and respond to greetings. (Also good to check bot's heartbeat)
 					@muc.say 'Hello.'
+
 				elsif text.match 'what is happening'
 					#Describe what's going on with background tasks
 					if @jobs.size > 0
@@ -84,6 +86,7 @@ class RailsBot
 						}
 						
 						@muc.say response + "Now let me get back to work!"
+
 					else 
 						@muc.say "Just hanging out."
 					end
@@ -106,7 +109,6 @@ class RailsBot
 	def schedule(requestor, request)
 		begin
 			job = Thread.new {
-
 				Thread.stop                #Let's pause the process, so we can schedule it.
 				@muc.say yield             #Process has been resumed.. have at it!
 				@jobs.delete job           #Clean up the job.
@@ -121,19 +123,6 @@ class RailsBot
 
 			puts @jobs.inspect
 			job.run
-			job.join(WAIT_TIME)
-
-			case job.status
-				when 'run' then 
-					"Trevor Grayson did not expect this case."
-				when 'sleep' then 
-					@muc.say "#{requestor}: I'm working on it. Give me a couple of minutes on this one."
-					job.run
-					job.join
-				when 'aborting' then "I'm aborting this job."
-				#when false then ""
-				#else
-			end
 
 		rescue StandardError => e
 			puts e.to_s
