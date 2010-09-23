@@ -14,8 +14,6 @@ class RailsBot
 	end
 
 	RAILSBOT = YAML.load_file(bot_config_path)
-	WAIT_TIME = 2
-
 
 	def initialize(bind)
 		@cmds = YAML.load_file("config/bot_commands.yml")
@@ -47,37 +45,25 @@ class RailsBot
 
 	end
 
+	protected
+
 	def register_behaviors
 		@muc.on_message {| time,nick,text |
-			if ( nick != RAILSBOT['name'] )
+			if ( nick != RAILSBOT['name'] )  #Don't talk to yourself!
 				puts( (time || Time.new).strftime('%I:%M') + " <#{nick}> #{text}" )
 
-				if text[0] == 92 # / = 47, \ = 92
+				case text
+				when /\\.*/     # / = 47, \ = 92
 					#User started with the magic character, this will be run as ruby code
-					self.schedule(nick, text) {
-						strio = StringIO.new
-						old_stdout = $stdout
-						$stdout = strio
+					schedule(nick, text) do
+						run_ruby(text)
+					end
 
-						begin
-							result = eval(text[1..-1], @sbinding)
-						rescue Exception => e
-							@muc.say "Well done sir.\n" + e
-						end
-
-						strio.rewind
-						@muc.say strio.read      #echo stdout to chatroom
-
-						$stdout = old_stdout
-
-						result.inspect           #Implicitly Show results IRB style
-					}
-
-				elsif text.match '^(hello|hey|hi|sup|salutations|greetings)$'
+				when /^(hello|hey|hi|sup|salutations|greetings)$/
 					#Be polite and respond to greetings. (Also good to check bot's heartbeat)
 					@muc.say 'Hello.'
 
-				elsif text.match 'what is happening'
+				when /^(what is happening)$/
 					#Describe what's going on with background tasks
 					if @jobs.size > 0
 						response = "\n"
@@ -94,7 +80,7 @@ class RailsBot
 					#Check regex list of commands. This is the customizable part.
 					@cmds.each{|regex,func|
 						if text.match Regexp.new regex
-							self.schedule(nick, text) do
+							schedule(nick, text) do
 								send(func, text)  
 							end
 							@muc.say response
@@ -106,7 +92,7 @@ class RailsBot
 
 	end
 
-	def schedule(requestor, request)
+	def schedule(nick, text)
 		begin
 			job = Thread.new {
 				Thread.stop                #Let's pause the process, so we can schedule it.
@@ -116,8 +102,8 @@ class RailsBot
 
 			#Keep track of what's going on
 			@jobs.merge!({ job => {
-					:nick => requestor,
-					:text => request
+					:nick => nick,
+					:text => text
 				}
 			})
 
@@ -128,6 +114,25 @@ class RailsBot
 			puts e.to_s
 			response = e.to_s
 		end
+	end
+
+	def run_ruby(text)
+		strio = StringIO.new
+		old_stdout = $stdout
+		$stdout = strio
+	
+		begin
+			result = eval(text[1..-1], @sbinding)
+		rescue Exception => e
+			@muc.say "Well done sir.\n" + e
+		end
+	
+		strio.rewind
+		@muc.say strio.read      #echo stdout to chatroom
+	
+		$stdout = old_stdout
+	
+		@muc.say result.inspect           #Implicitly Show results IRB style
 	end
 
 end
